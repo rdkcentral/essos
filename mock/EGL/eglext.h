@@ -22,13 +22,9 @@ typedef void *EGLImage;
 typedef khronos_utime_nanoseconds_t EGLTimeKHR;
 typedef khronos_utime_nanoseconds_t EGLTime;
 
-/* API calling conventions */
-#ifndef EGLAPIENTRY
-#define EGLAPIENTRY
-#endif
-
-#ifndef EGLAPIENTRYP
-#define EGLAPIENTRYP EGLAPIENTRY *
+/* Placeholder for khronos types if not defined */
+#ifndef __khrplatform_h_
+typedef long long khronos_utime_nanoseconds_t;
 #endif
 
 /* Common extension constants */
@@ -37,8 +33,12 @@ typedef khronos_utime_nanoseconds_t EGLTime;
 #define EGL_NO_STREAM_KHR                   ((EGLStreamKHR)0)
 
 /* Extension function pointer types */
-typedef EGLImageKHR (EGLAPIENTRY *PFNEGLCREATEIMAGEKHRPROC)(EGLDisplay dpy, EGLContext ctx, EGLenum target, EGLClientBuffer buffer, const EGLint *attrib_list);
-typedef EGLBoolean (EGLAPIENTRY *PFNEGLDESTROYIMAGEKHRPROC)(EGLDisplay dpy, EGLImageKHR image);
+typedef EGLImageKHR (EGLAPIENTRYP PFNEGLCREATEIMAGEKHRPROC)(EGLDisplay dpy, EGLContext ctx, EGLenum target, EGLClientBuffer buffer, const EGLint *attrib_list);
+typedef EGLBoolean (EGLAPIENTRYP PFNEGLDESTROYIMAGEKHRPROC)(EGLDisplay dpy, EGLImageKHR image);
+
+#ifndef EGLAPIENTRYP
+#define EGLAPIENTRYP
+#endif
 
 #ifdef __cplusplus
 }

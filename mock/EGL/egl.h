@@ -7,18 +7,8 @@
 #ifndef __EGL_EGL_H_STUB__
 #define __EGL_EGL_H_STUB__
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-/* Khronos platform types */
-#ifndef __khrplatform_h_
-typedef int64_t khronos_int64_t;
-typedef uint64_t khronos_uint64_t;
-typedef khronos_uint64_t khronos_utime_nanoseconds_t;
-typedef khronos_int64_t khronos_stime_nanoseconds_t;
 #endif
 
 /* EGL Types */
@@ -35,11 +25,6 @@ typedef void *EGLNativePixmapType;
 typedef void *EGLNativeWindowType;
 typedef void (*__eglMustCastToProperFunctionPointerType)(void);
 
-/* Platform-specific native types */
-typedef EGLNativeDisplayType NativeDisplayType;
-typedef EGLNativePixmapType NativePixmapType;
-typedef EGLNativeWindowType NativeWindowType;
-
 /* EGL Constants */
 #define EGL_ALPHA_SIZE                  0x3021
 #define EGL_BAD_ACCESS                  0x3002
@@ -51,7 +36,6 @@ typedef EGLNativeWindowType NativeWindowType;
 #define EGL_BAD_DISPLAY                 0x3008
 #define EGL_BAD_MATCH                   0x3009
 #define EGL_BAD_NATIVE_PIXMAP           0x300A
-#define EGL_DEFAULT_DISPLAY             ((EGLNativeDisplayType)0)
 #define EGL_BAD_NATIVE_WINDOW           0x300B
 #define EGL_BAD_PARAMETER               0x300C
 #define EGL_BAD_SURFACE                 0x300D
