@@ -26,12 +26,6 @@ bin_PROGRAMS = essos-sample
 
 BUILT_SOURCES= libessos.la
 
-if !NO_RESMGR
-lib_LTLIBRARIES += libessosrmgr.la
-bin_PROGRAMS += essos-sample-resmgr
-BUILT_SOURCES += libessosrmgr.la
-endif
-
 pcfiles = essos.pc
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = $(pcfiles)
@@ -42,14 +36,6 @@ libessos_la_includedir = $(includedir)
 
 libessos_la_CXXFLAGS = $(AM_CXXFLAGS) -I$(top_srcdir)/..
 libessos_la_LDFLAGS = $(AM_LDFLAGS) -lEGL -ldl -lpthread
-
-libessosrmgr_la_SOURCES = essos-resmgr.cpp
-libessosrmgr_la_include_HEADERS = essos-resmgr.h
-libessosrmgr_la_includedir = $(includedir)
-
-libessosrmgr_la_CXXFLAGS = $(AM_CXXFLAGS) -I$(top_srcdir)/..
-libessosrmgr_la_LDFLAGS = $(AM_LDFLAGS) -lpthread
-
 
 if HAVE_WAYLAND
 if HAVE_WAYLAND_EGL
@@ -73,10 +59,6 @@ if HAVE_EGL
 essos_sample_CXXFLAGS += ${EGL_CFLAGS}
 endif
 essos_sample_LDFLAGS = $(AM_FLAGS) -lessos -lGLESv2
-
-essos_sample_resmgr_SOURCES = essos-sample-resmgr.cpp
-essos_sample_resmgr_CXXFLAGS = ${AM_CXXFLAGS}
-essos_sample_resmgr_LDFLAGS = $(AM_FLAGS) -lessosrmgr
 
 DISTCLEANFILES = $(pcinfiles:.in=)
 EXTRA_DIST = $(pcinfiles)
