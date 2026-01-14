@@ -31,7 +31,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = $(pcfiles)
 
 libessos_la_SOURCES = essos.cpp
-libessos_la_include_HEADERS = essos.h essos-app.h essos-system.h essos-game.h essos-resmgr.h
+libessos_la_include_HEADERS = essos.h essos-app.h essos-system.h essos-game.h
 libessos_la_includedir = $(includedir)
 
 libessos_la_CXXFLAGS = $(AM_CXXFLAGS) -I$(top_srcdir)/..
