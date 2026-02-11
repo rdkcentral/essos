@@ -319,7 +319,8 @@ static EGLint gDefaultEGLCtxAttr[]=
   EGL_NONE
 };
 
-static int g_activeLevel= 2;
+
+static int g_activeLevel= 4;
 
 static void essLog( int level, const char *fmt, ... )
 {

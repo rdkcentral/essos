@@ -1,0 +1,410 @@
+#include "essos-rdk-adapter.h"
+#include "ClientWrapper.h"
+#include <stdio.h>
+#include <string.h>
+#include <map>
+#include <mutex>
+#include <utility>
+
+// ========================================================================
+// INTERNAL STATE
+// ========================================================================
+
+static int g_rdk_client_id = -1;
+static std::map<int, int> g_essos_to_rdk_map;  // Essos ID → RDK ID
+static std::map<int, int> g_rdk_to_essos_map;  // RDK ID → Essos ID
+static int g_next_essos_id = 1;
+static std::mutex g_adapter_mutex;
+
+// ========================================================================
+// TYPE MAPPING
+// ========================================================================
+
+static const char* map_essos_type_to_rdk(EssosResourceType type)
+{
+    switch (type) {
+        case ESSOS_RES_VIDEO_DECODER:
+            return "video_decoder";
+        case ESSOS_RES_AUDIO_DECODER:
+            return "audio_decoder";
+        case ESSOS_RES_FRONTEND:
+            return "frontend";
+        case ESSOS_RES_SVP_ALLOCATOR:
+            return "svp_allocator";
+        default:
+            return "unknown";
+    }
+}
+
+// ========================================================================
+// CAPABILITY CONVERSION
+// ========================================================================
+
+static void convert_essos_caps_to_rdk(
+    EssosCapability* essos_caps,
+    int cap_count,
+    Capability** rdk_caps_out
+)
+{
+    if (cap_count <= 0 || !essos_caps) {
+        *rdk_caps_out = NULL;
+        return;
+    }
+
+    Capability* rdk_caps = new Capability[cap_count];
+    for (int i = 0; i < cap_count; i++) {
+        rdk_caps[i].key = (char*)essos_caps[i].key;
+        rdk_caps[i].value = (char*)essos_caps[i].value;
+    }
+
+    *rdk_caps_out = rdk_caps;
+}
+
+// ========================================================================
+// PUBLIC API IMPLEMENTATION
+// ========================================================================
+
+int essos_rdk_adapter_init(void)
+{
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id != -1) {
+        printf("[Essos-RDK Adapter] Already initialized\n");
+        return 0;
+    }
+
+    printf("[Essos-RDK Adapter] Initializing...\n");
+
+    // Create RDK client (0 = auto-generate ID)
+    g_rdk_client_id = Create_RM_client(0);
+
+    if (g_rdk_client_id <= 0) {
+        printf("[Essos-RDK Adapter] Failed to create RDK client\n");
+        return -1;
+    }
+
+    printf("[Essos-RDK Adapter] Initialized with RDK client ID: %d\n",
+           g_rdk_client_id);
+    return 0;
+}
+
+int essos_rdk_adapter_term(void)
+{
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id == -1) {
+        return 0;
+    }
+
+    printf("[Essos-RDK Adapter] Terminating...\n");
+
+    // Release all resources
+    for (auto& pair : g_essos_to_rdk_map) {
+        int rdk_id = pair.second;
+        Release_Resource_client(g_rdk_client_id, rdk_id);
+        printf("[Essos-RDK Adapter] Released resource RDK ID: %d\n", rdk_id);
+    }
+
+    // Clear mappings
+    g_essos_to_rdk_map.clear();
+    g_rdk_to_essos_map.clear();
+
+    // Delete RDK client
+    Delete_RM_client(g_rdk_client_id);
+    g_rdk_client_id = -1;
+
+    printf("[Essos-RDK Adapter] ✓ Terminated\n");
+    return 0;
+}
+
+int essos_rdk_adapter_request_resource(
+    EssosResourceRequest* request,
+    int* essos_resource_id
+)
+{
+    if (!request || !essos_resource_id) {
+        printf("[Essos-RDK Adapter] ✗ Invalid parameters\n");
+        return -1;
+    }
+
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id == -1) {
+        printf("[Essos-RDK Adapter] ✗ Not initialized\n");
+        return -1;
+    }
+
+    // Map resource type
+    const char* rdk_type = map_essos_type_to_rdk(request->type);
+    printf("[Essos-RDK Adapter] Requesting resource: %s\n", rdk_type);
+
+    // Convert capabilities
+    Capability* rdk_caps = NULL;
+    convert_essos_caps_to_rdk(
+        request->capabilities,
+        request->capability_count,
+        &rdk_caps
+    );
+
+    // Create RDK resource info
+    RDKRMgrResInfo rdk_res_info;
+    rdk_res_info.res_type = (char*)rdk_type;
+    rdk_res_info.capability_count = request->capability_count;
+    rdk_res_info.capabilities = rdk_caps;
+
+    // Log capabilities
+    for (int i = 0; i < request->capability_count; i++) {
+        printf("[Essos-RDK Adapter]   Cap[%d]: %s = %s\n",
+               i, rdk_caps[i].key, rdk_caps[i].value);
+    }
+
+    // Request resource from RDK
+    int ret = Request_Resource_client(g_rdk_client_id, &rdk_res_info);
+
+    // Cleanup temporary capabilities
+    delete[] rdk_caps;
+
+    if (ret != 0) {
+        printf("[Essos-RDK Adapter] ✗ RDK request failed\n");
+        return -1;
+    }
+
+    // Get RDK resource ID (blocking call)
+    int rdk_resource_id = get_resourceID(g_rdk_client_id);
+
+    if (rdk_resource_id <= 0) {
+        printf("[Essos-RDK Adapter] ✗ Failed to get RDK resource ID\n");
+        return -1;
+    }
+
+    // Generate Essos resource ID
+    int new_essos_id = g_next_essos_id++;
+
+    // Store bidirectional mapping
+    g_essos_to_rdk_map[new_essos_id] = rdk_resource_id;
+    g_rdk_to_essos_map[rdk_resource_id] = new_essos_id;
+
+    *essos_resource_id = new_essos_id;
+
+    printf("[Essos-RDK Adapter] ✓ Resource acquired\n");
+    printf("[Essos-RDK Adapter]   Essos ID: %d → RDK ID: %d\n",
+           new_essos_id, rdk_resource_id);
+
+    return 0;
+}
+
+int essos_rdk_adapter_release_resource(int essos_resource_id)
+{
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id == -1) {
+        printf("!!! [Essos-RDK Adapter] ✗ Not initialized\n");
+        return -1;
+    }
+
+    // Find RDK resource ID
+    auto it = g_essos_to_rdk_map.find(essos_resource_id);
+    if (it == g_essos_to_rdk_map.end()) {
+        printf("!!! [Essos-RDK Adapter] ✗ Invalid Essos resource ID: %d\n",
+               essos_resource_id);
+        return -1;
+    }
+
+    int rdk_resource_id = it->second;
+
+    printf("!!! [Essos-RDK Adapter] Releasing resource...\n");
+    printf("!!! [Essos-RDK Adapter]   Essos ID: %d → RDK ID: %d\n",
+           essos_resource_id, rdk_resource_id);
+
+    // Release resource in RDK
+    int ret = Release_Resource_client(g_rdk_client_id, rdk_resource_id);
+
+    if (ret == 0) {
+        // Remove from both mappings
+        g_essos_to_rdk_map.erase(essos_resource_id);
+        g_rdk_to_essos_map.erase(rdk_resource_id);
+        printf("!!! [Essos-RDK Adapter] ✓ Resource released\n");
+    } else {
+        printf("!!! [Essos-RDK Adapter] ✗ Failed to release resource\n");
+    }
+
+    return ret;
+}
+
+int essos_rdk_adapter_get_status(int essos_resource_id, int* status)
+{
+    if (!status) {
+        return -1;
+    }
+
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    // Check if resource exists in mapping
+    auto it = g_essos_to_rdk_map.find(essos_resource_id);
+    if (it == g_essos_to_rdk_map.end()) {
+        *status = 0;  // Not allocated
+        return -1;
+    }
+
+    *status = 1;  // Allocated
+    return 0;
+}
+
+// Notification callback storage
+static std::map<int, std::pair<EssosRdkAdapterNotifyCB, void*>> g_notify_callbacks;
+static std::mutex g_notify_mutex;
+
+int essos_rdk_adapter_set_notify(int essos_resource_id, EssosRdkAdapterNotifyCB notify_callback, void* user_data)
+{
+    std::lock_guard<std::mutex> lock(g_notify_mutex);
+
+    if (notify_callback) {
+        g_notify_callbacks[essos_resource_id] = std::make_pair(notify_callback, user_data);
+        printf("[Essos-RDK Adapter] Notification callback set for resource ID: %d\n", essos_resource_id);
+    } else {
+        g_notify_callbacks.erase(essos_resource_id);
+        printf("[Essos-RDK Adapter] Notification callback removed for resource ID: %d\n", essos_resource_id);
+    }
+
+    return 0;
+}
+
+int essos_rdk_adapter_add_to_blacklist(
+    EssosResourceType type,
+    int resource_id
+)
+{
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id <= 0) {
+        fprintf(stderr, "[Essos-RDK Adapter] ✗ Not initialized\n");
+        return -1;
+    }
+
+    const char* rdk_type = map_essos_type_to_rdk(type);
+    fprintf(stderr, "[Essos-RDK Adapter] Adding to blacklist: %s, ID=%d\n", rdk_type, resource_id);
+
+    // Call RDK RM blacklist function through ClientWrapper
+    int result = Add_To_BlackList_client(g_rdk_client_id, rdk_type, resource_id);
+
+    if (result != 0) {
+        fprintf(stderr, "[Essos-RDK Adapter] ⚠ Blacklist not supported in RDK RM (stub)\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[Essos-RDK Adapter] ✓ Added to blacklist\n");
+    return 0;
+}
+
+int essos_rdk_adapter_remove_from_blacklist(
+    EssosResourceType type,
+    int resource_id
+)
+{
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id <= 0) {
+        fprintf(stderr, "[Essos-RDK Adapter] ✗ Not initialized\n");
+        return -1;
+    }
+
+    const char* rdk_type = map_essos_type_to_rdk(type);
+    fprintf(stderr, "[Essos-RDK Adapter] Removing from blacklist: %s, ID=%d\n", rdk_type, resource_id);
+
+    // Call RDK RM blacklist function through ClientWrapper
+    int result = Remove_From_BlackList_client(g_rdk_client_id, rdk_type, resource_id);
+
+    if (result != 0) {
+        fprintf(stderr, "[Essos-RDK Adapter] ⚠ Blacklist not supported in RDK RM (stub)\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[Essos-RDK Adapter] ✓ Removed from blacklist\n");
+    return 0;
+}
+
+int essos_rdk_adapter_get_blacklist_state(
+    EssosResourceType type,
+    int resource_id,
+    int* blacklisted
+)
+{
+    if (!blacklisted) {
+        fprintf(stderr, "[Essos-RDK Adapter] ✗ Invalid output parameter\n");
+        return -1;
+    }
+
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id <= 0) {
+        fprintf(stderr, "[Essos-RDK Adapter] ✗ Not initialized\n");
+        return -1;
+    }
+
+    const char* rdk_type = map_essos_type_to_rdk(type);
+    fprintf(stderr, "[Essos-RDK Adapter] Checking blacklist state: %s, ID=%d\n", rdk_type, resource_id);
+
+    // Call RDK RM blacklist query through ClientWrapper
+    int result = Get_BlackList_State_client(g_rdk_client_id, rdk_type, resource_id, blacklisted);
+
+    if (result != 0) {
+        fprintf(stderr, "[Essos-RDK Adapter] ⚠ Failed to get blacklist state\n");
+        return -1;
+    }
+
+    fprintf(stderr, "[Essos-RDK Adapter] Blacklist state: %s\n", (*blacklisted == 1) ? "blacklisted" : "not blacklisted");
+    return 0;
+}
+
+int essos_rdk_adapter_handle_revoke(
+    int essos_resource_id,
+    int timeout_ms
+)
+{
+    std::lock_guard<std::mutex> lock(g_adapter_mutex);
+
+    if (g_rdk_client_id <= 0) {
+        printf("!!! [Essos-RDK Adapter] ✗ Not initialized\n");
+        return -1;
+    }
+
+    // Find RDK resource ID from Essos ID
+    auto essos_it = g_essos_to_rdk_map.find(essos_resource_id);
+    if (essos_it == g_essos_to_rdk_map.end()) {
+        printf("!!! [Essos-RDK Adapter] ✗ Unknown Essos resource ID: %d\n", essos_resource_id);
+        return -1;
+    }
+
+    int rdk_resource_id = essos_it->second;
+
+    printf("!!! [Essos-RDK Adapter] Revoke notification: Essos ID=%d, RDK ID=%d, timeout=%dms\n",
+            essos_resource_id, rdk_resource_id, timeout_ms);
+
+    // Find and trigger notification callback if set
+    auto notify_it = g_notify_callbacks.find(essos_resource_id);
+    if (notify_it != g_notify_callbacks.end()) {
+        EssosRdkAdapterNotifyCB callback = notify_it->second.first;
+        void* user_data = notify_it->second.second;
+        if (callback) {
+            // State code for revoke: use a negative value or specific code
+            // Convention: -1 = revoke notification
+            const int ESSOS_STATE_REVOKE = -1;
+
+            printf("!!! [Essos-RDK Adapter] → Triggering Essos revoke callback for resource %d\n",
+                    essos_resource_id);
+            callback(essos_resource_id, ESSOS_STATE_REVOKE, user_data);
+        } else {
+            printf("[Essos-RDK Adapter] ⚠ No callback set for revoke notification\n");
+        }
+    } else {
+        printf("!!! [Essos-RDK Adapter] ⚠ No notify info registered for resource %d\n",
+                essos_resource_id);
+    }
+
+    // Note: Actual resource release should be done by Essos application in response to callback
+    // The adapter waits for essos_rdk_adapter_release_resource() to be called
+
+    printf("!!! [Essos-RDK Adapter] ✓ Revoke notification processed\n");
+    return 0;
+}
+

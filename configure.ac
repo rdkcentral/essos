@@ -81,12 +81,28 @@ AC_ARG_ENABLE([essosresmgrfree],
    esac],[essosresmgrfree=false])
 AM_CONDITIONAL([NO_RESMGR], [test x$essosresmgrfree = xtrue])
 
-LIB_ESSOS_EXTRA_CFLAG=""
+
+AC_ARG_ENABLE([rdkresourcemanager],
+  [ --enable-rdkresourcemanager   Enable RDK Resource Manager adapter],
+  [ case "${enableval}" in
+    yes) rdkresourcemanager=true ;;
+    no)  rdkresourcemanager=false ;;
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-rdkresourcemanager]) ;;
+   esac],[rdkresourcemanager=false])
+AM_CONDITIONAL([USE_RDK_RESOURCE_MANAGER], [test x$rdkresourcemanager = xtrue])
+
+
+LIB_ESSOS_EXTRA_CFLAGS=""
 LIB_ESSOS_EXTRA_LIBS=""
 if test "x$essoswesterosfree" != xtrue; then
   LIB_ESSOS_EXTRA_CFLAGS="-DHAVE_WESTEROS"
   LIB_ESSOS_EXTRA_LIBS="-lwesteros_gl -lwesteros_simpleshell_client"
 fi
+
+if test "x$rdkresourcemanager" = xtrue; then
+  LIB_ESSOS_EXTRA_CFLAGS="$LIB_ESSOS_EXTRA_CFLAGS -DUSE_RDK_RESOURCE_MANAGER"
+fi
+
 AC_SUBST(LIB_ESSOS_EXTRA_CFLAGS)
 AC_SUBST(LIB_ESSOS_EXTRA_LIBS)
 
