@@ -193,7 +193,8 @@ verify_dependencies() {
     command -v pkg-config >/dev/null 2>&1 || missing+=("pkg-config")
     command -v autoconf >/dev/null 2>&1 || missing+=("autoconf")
     command -v automake >/dev/null 2>&1 || missing+=("automake")
-    command -v libtool >/dev/null 2>&1 || missing+=("libtool")
+    command -v libtoolize >/dev/null 2>&1 || missing+=("libtool")
+
     
     # Check coverage tools
     command -v lcov >/dev/null 2>&1 || missing+=("lcov")
