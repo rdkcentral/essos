@@ -55,7 +55,7 @@
 #include "simpleshell-client-protocol.h"
 #endif
 
-#include "westeros-version.h"
+#include "essos-version.h"
 
 #define ESS_UNUSED(x) ((void)x)
 #define ESS_MAX_ERROR_DETAIL (512)
@@ -336,7 +336,7 @@ EssCtx* EssContextCreate()
 {
    EssCtx *ctx= 0;
 
-   INFO("westeros (essos) version " WESTEROS_VERSION_FMT, WESTEROS_VERSION );
+   INFO("westeros (essos) version " WESTEROS_ESSOS_VERSION_FMT, WESTEROS_ESSOS_VERSION );
 
    const char *env= getenv( "ESSOS_DEBUG" );
    if ( env )
