@@ -336,7 +336,7 @@ EssCtx* EssContextCreate()
 {
    EssCtx *ctx= 0;
 
-   INFO("westeros (essos) version " WESTEROS_ESSOS_VERSION_FMT, WESTEROS_ESSOS_VERSION );
+   INFO("westeros (essos) version " ESSOS_VERSION_FMT, ESSOS_VERSION );
 
    const char *env= getenv( "ESSOS_DEBUG" );
    if ( env )
