@@ -404,7 +404,7 @@ void EssContextDestroy( EssCtx *ctx )
 
       if ( ctx->appName )
       {
-         free( (void*)ctx->appName );
+         free( (char*)ctx->appName );
       }
 
       pthread_mutex_destroy( &ctx->mutex );
@@ -529,13 +529,9 @@ bool EssContextSetName( EssCtx *ctx, const char *name )
 {
    bool result= false;
 
-   if ( !ctx )
+   if ( ctx )
    {
-      // No context to set error in
-      goto exit;
-   }
-
-   pthread_mutex_lock( &ctx->mutex );
+      pthread_mutex_lock( &ctx->mutex );
 
       if ( ctx->isInitialized )
       {
@@ -553,23 +549,12 @@ bool EssContextSetName( EssCtx *ctx, const char *name )
          goto exit;
       }
 
-      if ( ctx->appName )
-      {
-         free( (void*)ctx->appName );
-      }
-      ctx->appName= strdup(name);
-
-      if ( !ctx->appName )
-      {
-         sprintf( ctx->lastErrorDetail,
-                  "Failed to allocate memory for application name" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
-      }
+      ctx->appName= strdup(name);;
 
       pthread_mutex_unlock( &ctx->mutex );
 
       result= true;
+   }
 
 exit:
 
@@ -806,14 +791,6 @@ bool EssContextInit( EssCtx *ctx )
          goto exit;
       }
 
-      if ( ctx->isInitialized )
-      {
-         sprintf( ctx->lastErrorDetail,
-                  "Bad state.  Context is already initialized" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
-      }
-
       if ( ctx->autoMode )
       {
          ctx->isWayland= ((getenv("WAYLAND_DISPLAY") != 0) ? true : false );
@@ -855,14 +832,6 @@ bool EssContextGetEGLDisplayType( EssCtx *ctx, NativeDisplayType *displayType )
          goto exit;
       }
 
-      if ( !displayType )
-      {
-         sprintf( ctx->lastErrorDetail,
-                  "Bad parameter.  displayType must be non-null" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
-      }
-
       *displayType= ctx->displayType;
 
       pthread_mutex_unlock( &ctx->mutex );
@@ -900,22 +869,6 @@ bool EssContextCreateNativeWindow( EssCtx *ctx, int width, int height, NativeWin
    if ( ctx )
    {
       pthread_mutex_lock( &ctx->mutex );
-
-      if ( !nativeWindow )
-      {
-         sprintf( ctx->lastErrorDetail,
-                  "Invalid parameter: nativeWindow is null" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
-      }
-
-      if ( width <= 0 || height <= 0 )
-      {
-         sprintf( ctx->lastErrorDetail,
-                  "Invalid parameter: width and height must be positive" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
-      }
 
       if ( !ctx->isInitialized )
       {
@@ -959,14 +912,6 @@ bool EssContextDestroyNativeWindow( EssCtx *ctx, NativeWindowType nativeWindow )
       {
          sprintf( ctx->lastErrorDetail,
                   "Bad state.  Must initialize context before calling" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
-      }
-
-      if ( !nativeWindow )
-      {
-         sprintf( ctx->lastErrorDetail,
-                  "Invalid parameter: nativeWindow is null" );
          pthread_mutex_unlock( &ctx->mutex );
          goto exit;
       }
@@ -1534,16 +1479,14 @@ bool EssContextGetDisplaySize( EssCtx *ctx, int *width, int *height )
          goto exit;
       }
 
-      if ( !width || !height )
+      if ( width )
       {
-         sprintf( ctx->lastErrorDetail,
-                  "Bad parameter.  Both width and height pointers must be non-null" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
+         *width= ctx->planeWidth;
       }
-
-      *width= ctx->planeWidth;
-      *height= ctx->planeHeight;
+      if ( height )
+      {
+         *height= ctx->planeHeight;
+      }
 
       result= true;
 
@@ -1571,18 +1514,22 @@ bool EssContextGetDisplaySafeArea( EssCtx *ctx, int *x, int *y, int *width, int 
          goto exit;
       }
 
-      if ( !x || !y || !width || !height )
+      if ( x )
       {
-         sprintf( ctx->lastErrorDetail,
-                  "Bad parameter.  All output pointers must be non-null" );
-         pthread_mutex_unlock( &ctx->mutex );
-         goto exit;
+         *x= ctx->planeSafeX;
       }
-
-      *x= ctx->planeSafeX;
-      *y= ctx->planeSafeY;
-      *width= ctx->planeSafeW;
-      *height= ctx->planeSafeH;
+      if ( y )
+      {
+         *y= ctx->planeSafeY;
+      }
+      if ( width )
+      {
+         *width= ctx->planeSafeW;
+      }
+      if ( height )
+      {
+         *height= ctx->planeSafeH;
+      }
 
       result= true;
 
@@ -2893,12 +2840,10 @@ static const struct wl_output_listener essOutputListener = {
 static void essShellSurfaceId(void *data,
                            struct wl_simple_shell *wl_simple_shell,
                            struct wl_surface *surface,
-                           uint32_t surfaceId,
-                           const char *name)
+                           uint32_t surfaceId)
 {
    EssCtx *ctx= (EssCtx*)data;
-   char defaultName[32];
-   (void)name;
+   char name[32];
 
    DEBUG("shell: surface created: %p id %x", surface, surfaceId);
    ctx->appSurfaceId= surfaceId;
@@ -2908,8 +2853,8 @@ static void essShellSurfaceId(void *data,
    }
    else
    {
-      sprintf( defaultName, "essos-app-%x", surfaceId );
-      wl_simple_shell_set_name( ctx->shell, surfaceId, defaultName );
+      sprintf( name, "essos-app-%x", surfaceId );
+      wl_simple_shell_set_name( ctx->shell, surfaceId, name );
    }
    if ( ctx->pendingGeometryChange )
    {
@@ -2926,14 +2871,11 @@ static void essShellSurfaceId(void *data,
 static void essShellSurfaceCreated(void *data,
                                 struct wl_simple_shell *wl_simple_shell,
                                 uint32_t surfaceId,
-                                const char *name,
-                                uint32_t type)
+                                const char *name)
 {
    ESS_UNUSED(data);
    ESS_UNUSED(wl_simple_shell);
-   ESS_UNUSED(surfaceId);
    ESS_UNUSED(name);
-   ESS_UNUSED(type);
 }
 
 static void essShellSurfaceDestroyed(void *data,
@@ -2952,10 +2894,10 @@ static void essShellSurfaceStatus(void *data,
                                uint32_t surfaceId,
                                const char *name,
                                uint32_t visible,
-                               uint32_t x,
-                               uint32_t y,
-                               uint32_t width,
-                               uint32_t height,
+                               int32_t x,
+                               int32_t y,
+                               int32_t width,
+                               int32_t height,
                                wl_fixed_t opacity,
                                wl_fixed_t zorder)
 {

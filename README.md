@@ -1,39 +1,8 @@
 # Essos
+Essos
 
-[![L1 Test Suite](https://github.com/rdkcentral/essos/actions/workflows/L1.yml/badge.svg)](https://github.com/rdkcentral/essos/actions/workflows/L1.yml)
-[![Coverity Scan](https://github.com/rdkcentral/essos/actions/workflows/coverity.yml/badge.svg)](https://github.com/rdkcentral/essos/actions/workflows/coverity.yml)
-
-Essos is a library making it simple to create applications that run either as native EGL or Wayland clients. It is a companion to Westeros.
-
-## 🚀 Quick Start
-
-```bash
-# One-command setup
-./quick-start.sh
-
-# Or manual setup
-./scripts/setup-env.sh --install
-./scripts/build.sh --coverage
-```
-
-## 📊 CI/CD Integration
-
-This repository is integrated with:
-- **L1 Test Suite**: Automated testing with coverage reports
-- **Coverity Static Analysis**: Code quality and security scanning
-
-**For detailed CI/CD documentation, see [L1_COVERITY_GUIDE.md](L1_COVERITY_GUIDE.md)**
-
-### GitHub Actions Workflows
-
-- **L1 Testing** (`.github/workflows/L1.yml`): Runs on every push/PR
-- **Coverity Analysis** (`.github/workflows/coverity.yml`): Weekly + on push to main
-
-### Build Scripts
-
-- `scripts/setup-env.sh` - Environment setup and dependency installation
-- `scripts/build.sh` - Main build script with coverage support
-- `scripts/coverity-build.sh` - Coverity static analysis build
+Essos is a library making it simple to create applications that run either as native EGL or Wayland clients.  It 
+is a companion to Westeros.
 
 ---
 # Copyright and license
