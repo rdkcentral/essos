@@ -1587,6 +1587,38 @@ exit:
    return result;
 }
 
+bool EssContextSetWindowFocus( EssCtx *ctx )
+{
+   bool result= false;
+
+   if ( ctx )
+   {
+      pthread_mutex_lock( &ctx->mutex );
+
+      if ( ctx->isWayland )
+      {
+         #ifdef HAVE_WAYLAND
+         if ( ctx->shell && ctx->appSurfaceId )
+         {
+            #ifdef HAVE_WESTEROS
+            wl_simple_shell_set_focus( ctx->shell, ctx->appSurfaceId );
+            #endif
+         }
+         #endif
+      }
+      else
+      {
+         // ignore
+      }
+
+      result= true;
+
+      pthread_mutex_unlock( &ctx->mutex );
+   }
+
+   return result;
+}
+
 bool EssContextResizeWindow( EssCtx *ctx, int width, int height )
 {
    bool result= false;

@@ -132,6 +132,13 @@ bool EssContextSetInitialWindowSize( EssCtx *ctx, int width, int height );
 bool EssContextSetWindowPosition( EssCtx *ctx, int x, int y );
 
 /**
+ * EssContextSetWindowFocus
+ * Sets the input focus the essos context's window.  This is useful for cases where multiple
+ * essos clients are connected to the same compositor and input needs to switch between them.
+ */
+ bool EssContextSetWindowFocus( EssCtx *ctx );
+ 
+/**
  * EssContextSetKeyRepeatInitialDelay
  *
  * Set the initial delay in milliseconds when a key is pressed until repeats start.
