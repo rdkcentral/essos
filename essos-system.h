@@ -137,8 +137,8 @@ bool EssContextSetWindowPosition( EssCtx *ctx, int x, int y );
  * Sets the input focus to the essos context's window.  This is useful for cases where multiple
  * essos clients are connected to the same compositor and input needs to switch between them.
  */
- bool EssContextSetWindowFocus( EssCtx *ctx );
- 
+bool EssContextSetWindowFocus( EssCtx *ctx );
+
 /**
  * EssContextSetKeyRepeatInitialDelay
  *
