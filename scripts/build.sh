@@ -110,9 +110,13 @@ EOF
 # Parse command line arguments
 parse_args() {
     if [ $# -eq 0 ]; then
-        log_info "No arguments provided. Building both L1 and Coverity by default."
-        BUILD_L1=true
         BUILD_COVERITY=true
+        if [ -d "$PROJECT_ROOT/L1" ]; then
+             log_info "No arguments provided. Building both L1 and Coverity by default."
+             BUILD_L1=true
+        else
+             log_info "No arguments provided. L1 directory not found; building Coverity only by default."
+        fi
         return
     fi
     

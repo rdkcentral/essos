@@ -88,7 +88,9 @@ jobs:
       run: |
         echo "Building essos with Coverity instrumentation..."
         chmod +x scripts/build.sh
-        ./scripts/build.sh --coverity
+        rm -rf cov-int
+        cov-build --dir cov-int ./scripts/build.sh --coverity
+        test -d cov-int
         ls -la cov-int/
     
     - name: Build without Coverity (verification)
