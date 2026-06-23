@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2.1.2 - 2026-6-23
+Tag: 2.1.2
+
+### Changes
+- Coverity for Essos
+- Add ChangeLog files in the westeros repositories
+
+### Dependencies
+- wayland >= 1.6.0
+- libxkbcommon >= 0.8.3
+- xkeyboard-config >= 2.18
+- gstreamer >= 1.10.4
+- EGL >= 1.4
+- GLES >= 2.0
+
 ## 2.1.1 - 2026-04-27
 Tag: 2.1.1
 
