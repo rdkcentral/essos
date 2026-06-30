@@ -132,6 +132,19 @@ bool EssContextSetInitialWindowSize( EssCtx *ctx, int width, int height );
 bool EssContextSetWindowPosition( EssCtx *ctx, int x, int y );
 
 /**
+ * EssContextSetWindowFocus
+ *
+ * Sets the input focus to the essos context's window.  For a Wayland
+ * application, this will set the input focus if the connected compositor
+ * exposes wl_simple_shell (ie. Westeros).  This is useful for cases where
+ * multiple essos clients are connected to the same compositor and input
+ * needs to switch between them.  For a direct Linux application, or for a
+ * Wayland application connected to a compositor that does not expose
+ * wl_simple_shell, this call will be ignored.
+ */
+bool EssContextSetWindowFocus( EssCtx *ctx );
+
+/**
  * EssContextSetKeyRepeatInitialDelay
  *
  * Set the initial delay in milliseconds when a key is pressed until repeats start.
