@@ -11,7 +11,7 @@ Changes:
 * Coverity for Essos
 * Add ChangeLog files in the westeros repositories
  
-Depedencies
+Dependencies
 ------------
 wayland >= 1.6.0
 libxkbcommon >= 0.8.3
