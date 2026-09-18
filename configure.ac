@@ -42,6 +42,16 @@ AC_TYPE_SIZE_T
 AC_HEADER_STDBOOL
 AX_PTHREAD
 
+ESSOS_VERSION_MAJOR=`sed -n 's/^#define ESSOS_VERSION_MAJOR (\([0-9][0-9]*\))$/\1/p' "$srcdir/essos-version.h"`
+ESSOS_VERSION_MINOR=`sed -n 's/^#define ESSOS_VERSION_MINOR (\([0-9][0-9]*\))$/\1/p' "$srcdir/essos-version.h"`
+ESSOS_VERSION_PATCH=`sed -n 's/^#define ESSOS_VERSION_PATCH (\([0-9][0-9]*\))$/\1/p' "$srcdir/essos-version.h"`
+
+if test -z "$ESSOS_VERSION_MAJOR" -o -z "$ESSOS_VERSION_MINOR" -o -z "$ESSOS_VERSION_PATCH"; then
+  AC_MSG_ERROR([failed to extract ESSOS_VERSION_* values from essos-version.h])
+fi
+
+ESSOS_LT_VERSION="$ESSOS_VERSION_MAJOR:$ESSOS_VERSION_MINOR:$ESSOS_VERSION_PATCH"
+
 # Checks for library functions.
 #Add the subdirectories to be considered for building.
 SUBDIRS=" "
@@ -95,5 +105,6 @@ AC_SUBST(HAVE_EGL)
 AC_SUBST(HAVE_WAYLAND)
 AC_SUBST(HAVE_WAYLAND_EGL)
 AC_SUBST(HAVE_XKB)
+AC_SUBST(ESSOS_LT_VERSION)
 AC_OUTPUT
 

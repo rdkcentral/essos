@@ -3316,7 +3316,7 @@ static bool essPlatformInitDirect( EssCtx *ctx )
       }
 
       {
-         void *module= dlopen( "libwesteros_gl.so.0.0.0", RTLD_NOW );
+         void *module= dlopen( "libwesteros_gl.so", RTLD_NOW );
          if ( module )
          {
             AddDisplaySizeListener addDisplaySizeListener= 0;
