@@ -20,6 +20,8 @@
 AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = -I .
 
+ESSOS_LIBRARY_VERSION_FLAGS = -version-number $(ESSOS_LT_VERSION)
+
 lib_LTLIBRARIES = libessos.la
 
 bin_PROGRAMS = essos-sample
@@ -35,7 +37,7 @@ libessos_la_include_HEADERS = essos.h essos-app.h essos-system.h essos-game.h
 libessos_la_includedir = $(includedir)
 
 libessos_la_CXXFLAGS = $(AM_CXXFLAGS) -I$(top_srcdir)/..
-libessos_la_LDFLAGS = $(AM_LDFLAGS) -lEGL -ldl -lpthread
+libessos_la_LDFLAGS = $(AM_LDFLAGS) -lEGL -ldl -lpthread $(ESSOS_LIBRARY_VERSION_FLAGS)
 
 if HAVE_WAYLAND
 if HAVE_WAYLAND_EGL
