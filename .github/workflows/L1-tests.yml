@@ -1,0 +1,59 @@
+name: L1-tests
+
+on:
+  workflow_call:
+    inputs:
+      caller_source:
+        description: "Specifies the source type (e.g., local or test framework) for the workflow."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  essos-l1:
+    name: Essos L1 tests and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake gcc-14 g++-14 python3-venv \
+            libegl1-mesa-dev libgtest-dev lcov
+          python3 -m venv .venv-gcovr
+          .venv-gcovr/bin/pip install 'gcovr>=8.4,<9'
+          echo "$PWD/.venv-gcovr/bin" >> "$GITHUB_PATH"
+
+      - name: Configure coverage build
+        run: |
+          cmake -S L1 -B L1/build \
+            -DCMAKE_C_COMPILER=gcc-14 \
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DENABLE_COVERAGE=ON
+
+      - name: Build L1 tests
+        run: cmake --build L1/build --parallel "$(nproc)"
+
+      - name: Run Essos L1 tests
+        run: ctest --test-dir L1/build -L Essos --output-on-failure
+
+      - name: Generate Essos coverage report
+        run: cmake --build L1/build --target coverage-essos --parallel
+
+      - name: Upload L1 coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-L1-essos
+          path: |
+            L1/build/coverage_html_essos/
+            L1/build/coverage_essos_filtered.info
+            L1/build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
+          retention-days: 30
