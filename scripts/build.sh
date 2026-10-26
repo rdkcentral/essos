@@ -231,12 +231,17 @@ build_l1() {
     log_info "Running L1 tests..."
     if [ -f "./essos_l1_tests" ]; then
         ./essos_l1_tests || {
-            log_warning "Some tests failed, but continuing with coverage generation"
+            log_error "L1 tests failed"
+            return 1
         }
     else
         log_error "Test executable not found: ./essos_l1_tests"
         return 1
     fi
+
+    # Enforce the scoped Essos production-source coverage gate.
+    log_info "Generating scoped Essos coverage report..."
+    cmake --build . --target coverage-essos --parallel "$JOBS"
     
     # Generate coverage report
     generate_coverage_report
