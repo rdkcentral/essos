@@ -47,6 +47,7 @@ if(ENABLE_COVERAGE)
                     --print-summary --fail-under-line 75
                 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
                 DEPENDS essos_l1_tests
+                VERBATIM
                 COMMENT "Report coverage for the explicitly listed Essos API and event-dispatch scope (75% minimum)")
         else()
             message(WARNING "gcovr not found: coverage-essos target is unavailable")
