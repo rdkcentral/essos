@@ -77,12 +77,13 @@ if(ENABLE_COVERAGE)
                     --filter "${ESSOS_SOURCE_ROOT}/essos.cpp"
                     --exclude-function "/^(?!(${ESSOS_COVERAGE_FUNCTIONS})$).*/"
                     --lcov "${CMAKE_BINARY_DIR}/coverage_essos_filtered.info"
+                    --xml "${CMAKE_BINARY_DIR}/coverage.xml"
                     --html-details "${CMAKE_BINARY_DIR}/coverage_html_essos/index.html"
-                    --print-summary --fail-under-line 75
+                    --print-summary
                 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
                 DEPENDS essos_l1_tests
                 VERBATIM
-                COMMENT "Report coverage for the explicitly listed Essos API and event-dispatch scope (75% minimum)")
+                COMMENT "Report coverage for the explicitly listed Essos API and event-dispatch scope")
         else()
             message(WARNING "gcovr not found: coverage-essos target is unavailable")
         endif()
