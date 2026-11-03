@@ -39,14 +39,37 @@ if(ENABLE_COVERAGE)
         message(FATAL_ERROR "ENABLE_COVERAGE requires gcovr")
     endif()
 
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        string(REGEX MATCH "^[0-9]+" GCOV_GCC_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
+        find_program(GCOV_EXECUTABLE NAMES "gcov-${GCOV_GCC_MAJOR}")
+        if(NOT GCOV_EXECUTABLE)
+            message(FATAL_ERROR "A gcov executable matching GCC ${CMAKE_CXX_COMPILER_VERSION} is required for coverage")
+        endif()
+
+        execute_process(
+            COMMAND "${GCOV_EXECUTABLE}" --version
+            OUTPUT_VARIABLE GCOV_VERSION_OUTPUT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+        if(NOT GCOV_VERSION_OUTPUT MATCHES "gcov[^0-9]*${GCOV_GCC_MAJOR}([. ]|$)")
+            message(FATAL_ERROR "${GCOV_EXECUTABLE} does not match GCC ${CMAKE_CXX_COMPILER_VERSION}; found ${GCOV_VERSION_OUTPUT}")
+        endif()
+    endif()
+
     target_compile_options(essos_l1_tests PRIVATE --coverage -O0 -g)
     target_link_options(essos_l1_tests PRIVATE --coverage)
+
+    set(GCOVR_GCOV_ARGS)
+    if(GCOV_EXECUTABLE)
+        list(APPEND GCOVR_GCOV_ARGS --gcov-executable "${GCOV_EXECUTABLE}")
+    endif()
 
     add_custom_target(coverage-essos
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_BINARY_DIR}/coverage_html"
         COMMAND "${GCOVR_EXECUTABLE}"
             --root "${ESSOS_SOURCE_ROOT}"
             --filter "${ESSOS_SOURCE_ROOT}/essos.cpp"
+            ${GCOVR_GCOV_ARGS}
             --html-details "${CMAKE_BINARY_DIR}/coverage_html/index.html"
             --xml "${CMAKE_BINARY_DIR}/coverage.xml"
             --print-summary
