@@ -68,14 +68,11 @@ if(ENABLE_COVERAGE)
             if(NOT "${GCOV_VERSION_MAJOR}" STREQUAL "${GCOV_GCC_MAJOR}")
                 message(FATAL_ERROR "gcov ${GCOV_VERSION_OUTPUT} does not match GCC ${CMAKE_CXX_COMPILER_VERSION}; install/select the matching gcov executable.")
             endif()
-            set(ESSOS_COVERAGE_FUNCTIONS
-                "EssContextCreate|EssContextDestroy|EssContextGetLastErrorDetail|EssContextSupportWayland|EssContextSupportDirect|EssContextSetUseWayland|EssContextGetUseWayland|EssContextSetUseDirect|EssContextGetUseDirect|EssContextSetName|EssContextSetEGLConfigAttributes|EssContextGetEGLConfigAttributes|EssContextSetEGLSurfaceAttributes|EssContextGetEGLSurfaceAttributes|EssContextSetEGLContextAttributes|EssContextGetEGLContextAttributes|EssContextSetDisplayMode|EssContextSetInitialWindowSize|EssContextSetSwapInterval|EssContextInit|EssContextGetEGLDisplayType|EssContextGetAppPlatformDisplayType|EssContextSetKeyListener|EssContextSetKeyAndMetadataListener|EssContextSetPointerListener|EssContextSetTouchListener|EssContextSetSettingsListener|EssContextSetTerminateListener|EssContextSetGamepadConnectionListener|EssContextSetKeyRepeatInitialDelay|EssContextSetKeyRepeatPeriod|EssContextSetDisplaySize|EssContextGetDisplaySize|EssContextGetDisplaySafeArea|EssContextSetWindowPosition|EssContextSetWindowFocus|EssContextRunEventLoopOnce|essSetDisplaySize|essProcessKeyPressed|essProcessKeyReleased|essProcessKeyRepeat|essProcessPointerMotion|essProcessPointerButtonPressed|essProcessPointerButtonReleased|essProcessTouchDown|essProcessTouchUp|essProcessTouchMotion|essProcessTouchFrame|essProcessGamepadButtonPressed|essProcessGamepadButtonReleased|essProcessGamepadAxisChanged")
             add_custom_target(coverage-essos
                 COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_BINARY_DIR}/coverage_html_essos"
                 COMMAND "${GCOVR_EXECUTABLE}" --root "${ESSOS_SOURCE_ROOT}"
                     --gcov-executable "${GCOV_EXECUTABLE}"
                     --filter "${ESSOS_SOURCE_ROOT}/essos.cpp"
-                    --exclude-function "/^(?!(${ESSOS_COVERAGE_FUNCTIONS})$).*/"
                     --lcov "${CMAKE_BINARY_DIR}/coverage_essos_filtered.info"
                     --xml "${CMAKE_BINARY_DIR}/coverage.xml"
                     --html-details "${CMAKE_BINARY_DIR}/coverage_html_essos/index.html"
@@ -83,7 +80,7 @@ if(ENABLE_COVERAGE)
                 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
                 DEPENDS essos_l1_tests
                 VERBATIM
-                COMMENT "Report coverage for the explicitly listed Essos API and event-dispatch scope")
+                COMMENT "Report file-level coverage for essos.cpp without function filtering")
         else()
             message(WARNING "gcovr not found: coverage-essos target is unavailable")
         endif()
