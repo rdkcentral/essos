@@ -42,6 +42,8 @@ jobs:
 
       - name: Run Essos L1 tests
         run: ctest --test-dir L1/build -L Essos --output-on-failure
+        env:
+          GTEST_OUTPUT: xml:${{ github.workspace }}/L1/build/essos_l1_test_results.xml
 
       - name: Generate Essos coverage report
         run: cmake --build L1/build --target coverage-essos --parallel
@@ -52,7 +54,9 @@ jobs:
         with:
           name: artifacts-L1-essos
           path: |
+            L1/build/essos_l1_test_results.xml
             L1/build/coverage.xml
+            L1/build/coverage.info
             L1/build/coverage_html/
             L1/build/Testing/Temporary/LastTest.log
           if-no-files-found: ignore
