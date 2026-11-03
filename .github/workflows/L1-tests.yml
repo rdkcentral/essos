@@ -53,8 +53,7 @@ jobs:
           name: artifacts-L1-essos
           path: |
             L1/build/coverage.xml
-            L1/build/coverage_html_essos/
-            L1/build/coverage_essos_filtered.info
+            L1/build/coverage_html/
             L1/build/Testing/Temporary/LastTest.log
           if-no-files-found: ignore
           retention-days: 30
