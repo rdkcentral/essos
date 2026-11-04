@@ -191,17 +191,12 @@ clean_builds() {
 build_l1() {
     log_step "Building L1 Tests with Coverage"
 
-    # Prefer GCC 14 because gcovr function filtering requires GCC 14 JSON data.
-    if [ -x "$PROJECT_ROOT/.venv-gcovr/bin/gcovr" ]; then
-        export PATH="$PROJECT_ROOT/.venv-gcovr/bin:$PATH"
-    fi
-
     local c_compiler="${CC:-$(command -v gcc-14 || command -v gcc)}"
     local cxx_compiler="${CXX:-$(command -v g++-14 || command -v g++)}"
     local gcc_version
     gcc_version=$("$cxx_compiler" -dumpfullversion -dumpversion)
     if [ "$(printf '%s\n' "14" "$gcc_version" | sort -V | head -n1)" != "14" ]; then
-       log_error "Essos scoped coverage requires GCC/G++ 14 or newer; found $gcc_version. Run ./scripts/setup.sh to install the L1 dependencies, then retry ./scripts/build.sh --l1."
+        log_error "Essos scoped coverage requires GCC/G++ 14 or newer; found $gcc_version. Run ./scripts/setup.sh to install the L1 dependencies, then retry ./scripts/build.sh --l1."
         return 1
     fi
 
@@ -265,71 +260,14 @@ build_l1() {
         return 1
     fi
 
-    # Enforce the scoped Essos production-source coverage gate.
-    log_info "Generating scoped Essos coverage report..."
+    # Generate the LCOV report through the CMake coverage target.
+    log_info "Generating Essos LCOV coverage report..."
     cmake --build . --target coverage-essos --parallel "$JOBS"
-    
-    # Generate coverage report
-    generate_coverage_report
+
+    log_success "LCOV report generated: $L1_BUILD_DIR/coverage.info"
+    log_success "HTML report generated: $L1_BUILD_DIR/coverage_html/index.html"
     
     cd "$PROJECT_ROOT"
-}
-
-# Generate coverage report
-generate_coverage_report() {
-    log_step "Generating Coverage Report"
-    
-    cd "$L1_BUILD_DIR"
-    
-    # Create coverage directory
-    mkdir -p coverage
-    
-    # Generate HTML coverage report with lcov
-    if command -v lcov &> /dev/null && command -v genhtml &> /dev/null; then
-        log_info "Generating HTML coverage report with lcov..."
-        
-        # Capture coverage data
-        lcov --capture --directory . --output-file coverage/coverage.info \
-             --rc lcov_branch_coverage=1 2>&1 | grep -v "WARNING: no data found" || true
-        
-        # Remove external dependencies from coverage
-        lcov --remove coverage/coverage.info '/usr/*' '*/test/*' '*/mocks/*' \
-             --output-file coverage/coverage_filtered.info \
-             --rc lcov_branch_coverage=1 2>&1 | grep -v "WARNING: no data found" || true
-        
-        # Generate HTML report
-        genhtml coverage/coverage_filtered.info \
-                --output-directory coverage/html \
-                --branch-coverage \
-                --title "Essos L1 Test Coverage" 2>&1 | grep -v "WARNING: no data found" || true
-        
-        log_success "HTML coverage report generated: $L1_BUILD_DIR/coverage/html/index.html"
-    fi
-    
-    # Generate text summary with gcovr
-    if command -v gcovr &> /dev/null; then
-        log_info "Generating coverage summary with gcovr..."
-        
-        gcovr --root .. \
-              --exclude '.*/test/.*' \
-              --exclude '.*/mocks/.*' \
-              --print-summary \
-              --txt coverage/coverage_summary.txt \
-              --html-details coverage/coverage_gcovr.html \
-              --branches 2>&1 | tee coverage/coverage_summary.txt
-        
-        log_success "Coverage summary generated: $L1_BUILD_DIR/coverage/coverage_summary.txt"
-    else
-        log_warning "gcovr not found. Skipping gcovr coverage report."
-    fi
-    
-    # Display summary
-    if [ -f "coverage/coverage_summary.txt" ]; then
-        echo ""
-        log_info "Coverage Summary:"
-        cat coverage/coverage_summary.txt
-        echo ""
-    fi
 }
 
 # Build for Coverity analysis

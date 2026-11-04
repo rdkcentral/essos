@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(ENABLE_COVERAGE "Instrument Essos L1 tests for gcov/lcov" OFF)
+option(ENABLE_COVERAGE "Instrument Essos L1 tests for lcov" OFF)
 
 find_package(Threads REQUIRED)
 find_package(GTest REQUIRED)
@@ -34,9 +34,10 @@ if(ENABLE_COVERAGE)
         message(FATAL_ERROR "ENABLE_COVERAGE requires GCC or Clang gcov-compatible instrumentation")
     endif()
 
-    find_program(GCOVR_EXECUTABLE gcovr)
-    if(NOT GCOVR_EXECUTABLE)
-        message(FATAL_ERROR "ENABLE_COVERAGE requires gcovr")
+    find_program(LCOV_EXECUTABLE lcov)
+    find_program(GENHTML_EXECUTABLE genhtml)
+    if(NOT LCOV_EXECUTABLE OR NOT GENHTML_EXECUTABLE)
+        message(FATAL_ERROR "ENABLE_COVERAGE requires lcov and genhtml")
     endif()
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -54,28 +55,34 @@ if(ENABLE_COVERAGE)
         if(NOT GCOV_VERSION_OUTPUT MATCHES "gcov[^0-9]*${GCOV_GCC_MAJOR}([. ]|$)")
             message(FATAL_ERROR "${GCOV_EXECUTABLE} does not match GCC ${CMAKE_CXX_COMPILER_VERSION}; found ${GCOV_VERSION_OUTPUT}")
         endif()
+    else()
+        find_program(LLVM_COV_EXECUTABLE NAMES llvm-cov)
+        if(NOT LLVM_COV_EXECUTABLE)
+            message(FATAL_ERROR "ENABLE_COVERAGE with Clang requires llvm-cov")
+        endif()
+        set(GCOV_EXECUTABLE "${LLVM_COV_EXECUTABLE} gcov")
     endif()
 
     target_compile_options(essos_l1_tests PRIVATE --coverage -O0 -g)
     target_link_options(essos_l1_tests PRIVATE --coverage)
 
-    set(GCOVR_GCOV_ARGS)
-    if(GCOV_EXECUTABLE)
-        list(APPEND GCOVR_GCOV_ARGS --gcov-executable "${GCOV_EXECUTABLE}")
-    endif()
-
     add_custom_target(coverage-essos
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_BINARY_DIR}/coverage_html"
-        COMMAND "${GCOVR_EXECUTABLE}"
-            --root "${ESSOS_SOURCE_ROOT}"
-            --filter "${ESSOS_SOURCE_ROOT}/essos.cpp"
-            ${GCOVR_GCOV_ARGS}
-            --html-details "${CMAKE_BINARY_DIR}/coverage_html/index.html"
-            --xml "${CMAKE_BINARY_DIR}/coverage.xml"
-            --print-summary
+        COMMAND "${LCOV_EXECUTABLE}" --directory "${CMAKE_BINARY_DIR}"
+            --base-directory "${ESSOS_SOURCE_ROOT}"
+            --capture
+            --include "*/essos.cpp"
+            --gcov-tool "${GCOV_EXECUTABLE}"
+            --output-file "${CMAKE_BINARY_DIR}/coverage.info"
+            --rc branch_coverage=1
+        COMMAND "${GENHTML_EXECUTABLE}" "${CMAKE_BINARY_DIR}/coverage.info"
+            --output-directory "${CMAKE_BINARY_DIR}/coverage_html"
+            --title "Essos L1 Coverage"
+            --legend
+            --show-details
+            --branch-coverage
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         DEPENDS essos_l1_tests
-        COMMENT "Measure production-source coverage for essos.cpp"
+        COMMENT "Measure Essos production-source coverage with lcov"
         VERBATIM
     )
 endif()
