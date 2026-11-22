@@ -30,6 +30,9 @@
 
 set -e
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -77,7 +80,10 @@ install_ubuntu_debian() {
     sudo apt-get install -y \
         build-essential \
         cmake \
+        gcc-14 \
+        g++-14 \
         pkg-config \
+        python3-venv \
         git \
         autoconf \
         automake \
@@ -107,9 +113,8 @@ install_ubuntu_debian() {
     sudo apt-get install -y \
         libgtest-dev \
         libgmock-dev \
-        lcov \
-        gcovr
-    
+        lcov
+
     # Additional utilities
     sudo apt-get install -y \
         curl \
@@ -279,6 +284,11 @@ main() {
             exit 1
             ;;
     esac
+
+    log_info "Installing gcovr 8.4+ in the project virtual environment..."
+    python3 -m venv "$PROJECT_ROOT/.venv-gcovr"
+    "$PROJECT_ROOT/.venv-gcovr/bin/pip" install 'gcovr>=8.4,<9'
+    export PATH="$PROJECT_ROOT/.venv-gcovr/bin:$PATH"
     
     # Try to build GTest from source if not available
     if ! verify_dependencies; then

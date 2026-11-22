@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2.1.3 - 2026-11-17
+Tag: 2.1.3
+
+### Changes
+- Create README.md for Essos
+- RDKEMW-13164 L1 test suite for Essos
+
 ## 2.1.2 - 2026-06-23
 Tag: 2.1.2
 

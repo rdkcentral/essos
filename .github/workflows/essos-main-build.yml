@@ -1,0 +1,34 @@
+name: essos-main-build
+
+on:
+  workflow_call:
+    inputs:
+      caller_source:
+        description: "Specifies the source type (e.g., local or test framework) for the workflow."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Essos production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install production build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake build-essential libtool pkg-config \
+            libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Build Essos
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh --coverity

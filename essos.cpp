@@ -34,6 +34,10 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#ifdef UNIT_TEST
+#include <stdarg.h>
+#endif
+
 #include <vector>
 #include <map>
 #include <string>
@@ -431,20 +435,30 @@ const char *EssContextGetLastErrorDetail( EssCtx *ctx )
 
 bool EssContextSupportWayland( EssCtx *ctx )
 {
+   #ifdef UNIT_TEST
+   ESS_UNUSED(ctx);
+   return true;
+   #else
    #ifdef HAVE_WAYLAND
    return true;
    #else
    return false;
    #endif
+   #endif
 }
 
 bool EssContextSupportDirect( EssCtx *ctx )
 {
+   #ifdef UNIT_TEST
+   ESS_UNUSED(ctx);
+   return true;
+   #else
    #ifdef HAVE_WESTEROS
    // We use westeros-gl to hide SOC specifics of EGL
    return true;
    #else
    return false;
+   #endif
    #endif
 }
 
@@ -464,6 +478,7 @@ bool EssContextSetUseWayland( EssCtx *ctx, bool useWayland )
          goto exit;
       }
 
+      #ifndef UNIT_TEST
       #ifndef HAVE_WAYLAND
       if ( useWayland )
       {
@@ -473,7 +488,9 @@ bool EssContextSetUseWayland( EssCtx *ctx, bool useWayland )
          goto exit;
       }
       #endif
+      #endif
 
+      #ifndef UNIT_TEST
       #ifndef HAVE_WESTEROS
       if ( !useWayland )
       {
@@ -482,6 +499,7 @@ bool EssContextSetUseWayland( EssCtx *ctx, bool useWayland )
          pthread_mutex_unlock( &ctx->mutex );
          goto exit;
       }
+      #endif
       #endif
 
       ctx->autoMode= false;
@@ -708,6 +726,13 @@ bool EssContextSetDisplayMode( EssCtx *ctx, const char *mode )
          result= essPlatformSetDisplayModeDirect( ctx, mode );
       }
       #endif
+      #if defined(UNIT_TEST) && !defined(HAVE_WESTEROS)
+      else
+      {
+         // Unit tests use a backend-free fake for direct mode selection.
+         result= true;
+      }
+      #endif
 
       pthread_mutex_unlock( &ctx->mutex );
    }
@@ -804,7 +829,12 @@ bool EssContextInit( EssCtx *ctx )
          goto exit;
       }
 
+      #ifdef UNIT_TEST
+      // Keep unit tests independent of display servers and device hardware.
+      result= true;
+      #else
       result= essPlatformInit(ctx);
+      #endif
       if ( result )
       {
          ctx->isInitialized= true;
@@ -1969,6 +1999,7 @@ static void essSetDisplaySize( EssCtx *ctx, int width, int height, bool customSa
    }
 }
 
+#ifdef HAVE_WAYLAND
 static void essShellSurfacePing(void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
 {
    ESS_UNUSED(data);
@@ -1994,6 +2025,7 @@ static const struct wl_shell_surface_listener essShellSurfaceListener= {
    essShellSurfaceConfigure,
    essShellSurfacePopupDone
 };
+#endif
 
 static bool essCreateNativeWindow( EssCtx *ctx, int width, int height )
 {
@@ -2169,6 +2201,12 @@ static bool essResize( EssCtx *ctx, int width, int height )
             ERROR("Error: eglResize: essCreateNativeWindow failed");
          }
       }
+   }
+   #endif
+   #ifdef UNIT_TEST
+   if ( !ctx->isWayland )
+   {
+      result= true;
    }
    #endif
 
@@ -4494,6 +4532,62 @@ static void essGamepadNotifyDisconnected( EssCtx *ctx, EssGamepad *gp )
          ctx->gamepadConnectionListener->disconnected( ctx->gamepadConnectionListenerUserData, gp );
       }
    }
+}
+#endif
+
+#ifdef UNIT_TEST
+// These hooks expose internal state transitions and event dispatch to tests
+// without changing the public API or production build behavior.
+extern "C" void EssContextTestGetDefaults( EssCtx *ctx, int *width, int *height,
+                                             int *safeX, int *safeY, int *safeW, int *safeH,
+                                             int *repeatDelay, int *repeatPeriod,
+                                             int *windowWidth, int *windowHeight, int *swapInterval )
+{
+   if ( !ctx ) return;
+   if ( width ) *width= ctx->planeWidth;
+   if ( height ) *height= ctx->planeHeight;
+   if ( safeX ) *safeX= ctx->planeSafeX;
+   if ( safeY ) *safeY= ctx->planeSafeY;
+   if ( safeW ) *safeW= ctx->planeSafeW;
+   if ( safeH ) *safeH= ctx->planeSafeH;
+   if ( repeatDelay ) *repeatDelay= ctx->keyRepeatInitialDelay;
+   if ( repeatPeriod ) *repeatPeriod= ctx->keyRepeatPeriod;
+   if ( windowWidth ) *windowWidth= ctx->windowWidth;
+   if ( windowHeight ) *windowHeight= ctx->windowHeight;
+   if ( swapInterval ) *swapInterval= ctx->eglSwapInterval;
+}
+
+extern "C" void EssContextTestSetRunning( EssCtx *ctx, bool running )
+{
+   if ( ctx ) ctx->isRunning= running;
+}
+
+extern "C" void EssContextTestSetCustomSafeArea( EssCtx *ctx, int width, int height,
+                                                    int x, int y, int safeWidth, int safeHeight )
+{
+   if ( ctx ) essSetDisplaySize( ctx, width, height, true, x, y, safeWidth, safeHeight );
+}
+
+extern "C" void EssContextTestEmitKeyPressed( EssCtx *ctx, int key ) { essProcessKeyPressed( ctx, key ); }
+extern "C" void EssContextTestEmitKeyReleased( EssCtx *ctx, int key ) { essProcessKeyReleased( ctx, key ); }
+extern "C" void EssContextTestEmitKeyRepeat( EssCtx *ctx, int key ) { essProcessKeyRepeat( ctx, key ); }
+extern "C" void EssContextTestEmitPointerMotion( EssCtx *ctx, int x, int y ) { essProcessPointerMotion( ctx, x, y ); }
+extern "C" void EssContextTestEmitPointerPressed( EssCtx *ctx, int button ) { essProcessPointerButtonPressed( ctx, button ); }
+extern "C" void EssContextTestEmitPointerReleased( EssCtx *ctx, int button ) { essProcessPointerButtonReleased( ctx, button ); }
+extern "C" void EssContextTestEmitTouchDown( EssCtx *ctx, int id, int x, int y ) { essProcessTouchDown( ctx, id, x, y ); }
+extern "C" void EssContextTestEmitTouchUp( EssCtx *ctx, int id ) { essProcessTouchUp( ctx, id ); }
+extern "C" void EssContextTestEmitTouchMotion( EssCtx *ctx, int id, int x, int y ) { essProcessTouchMotion( ctx, id, x, y ); }
+extern "C" void EssContextTestEmitTouchFrame( EssCtx *ctx ) { essProcessTouchFrame( ctx ); }
+
+extern "C" void EssContextTestEmitGamepadEvents( void *userData, EssGamepadEventListener *listener )
+{
+   EssGamepad gp;
+   memset( &gp, 0, sizeof(gp) );
+   gp.eventListenerUserData= userData;
+   gp.eventListener= listener;
+   essProcessGamepadButtonPressed( &gp, BTN_A );
+   essProcessGamepadButtonReleased( &gp, BTN_B );
+   essProcessGamepadAxisChanged( &gp, ABS_X, -1234 );
 }
 #endif
 
